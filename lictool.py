@@ -38,7 +38,7 @@ def sign(use_key: str, customer_name, customer_vat_id):
     with open(private_file, "rb") as f:
         buffer = f.read()
         private_key = serialization.load_pem_private_key(buffer, password=None)
-        print(f"Using {use_key} private key")
+        print(f"Using {private_file} as private key")
 
     start = date.today()
     end = start + timedelta(days=30)
@@ -58,9 +58,9 @@ def sign(use_key: str, customer_name, customer_vat_id):
         "signature": base64.b64encode(signature).decode(),
     }
 
-    license_file = f"{use_key}-license.json"
-    with open(license_file, "wt") as f:
-        buffer = json.dumps(signed_license, separators=(",", ":"), indent=4)
+    license_file = Path(f"{use_key}-license.json")
+    with open(license_file, "xt") as f:
+        buffer = json.dumps(signed_license, separators=(",", ":"))
         f.write(buffer)
         print(f"Wrote {len(buffer)} bytes to {license_file}")
 
@@ -71,7 +71,7 @@ def verify(use_key: str, license_file: str):
     with open(public_file, "rb") as f:
         buffer = f.read()
         public_key = serialization.load_pem_public_key(buffer)
-        print(f"Using {use_key} public key")
+        print(f"Using {public_file} as public key")
 
     with open(license_file, "rt") as f:
         buffer = f.read()
@@ -80,7 +80,7 @@ def verify(use_key: str, license_file: str):
     license_bytes = json.dumps(
         payload["data"], separators=(",", ":"), sort_keys=True
     ).encode("utf-8")
-    signature = base64.b64decode(payload["signature"])
+    signature = base64.b64decode(payload["signature"].encode())
 
     public_key.verify(signature, license_bytes)
 
