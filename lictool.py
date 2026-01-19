@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 import base64
 import json
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
-def generate(key_name: str):
+def generate(use_key: str):
     private_key = Ed25519PrivateKey.generate()
 
     # NOTE: save private key
-    private_file = Path(key_name)
-    with open(private_file, "wb") as file:
+    private_file = Path(f"{use_key}.pem")
+    with open(private_file, "xb") as file:
         buffer = private_key.private_bytes(
             serialization.Encoding.PEM,
-            serialization.PrivateFormat.OpenSSH,
+            serialization.PrivateFormat.PKCS8,
             serialization.NoEncryption(),
         )
         file.write(buffer)
@@ -24,26 +24,29 @@ def generate(key_name: str):
 
     # NOTE: save public key
     public_file = private_file.with_suffix(".pub")
-    with open(public_file, "wb") as file:
+    with open(public_file, "xb") as file:
         buffer = private_key.public_key().public_bytes(
-            encoding=serialization.Encoding.OpenSSH,
-            format=serialization.PublicFormat.OpenSSH,
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
         )
         file.write(buffer)
         print(f"Wrote {len(buffer)} bytes to {public_file}")
 
 
-def sign(use_key: str):
-    with open(use_key, "rb") as f:
+def sign(use_key: str, customer_name, customer_vat_id):
+    private_file = Path(f"{use_key}.pem")
+    with open(private_file, "rb") as f:
         buffer = f.read()
-        private_key = serialization.load_ssh_private_key(buffer, password=b"")
+        private_key = serialization.load_pem_private_key(buffer, password=None)
         print(f"Using {use_key} private key")
 
+    start = date.today()
+    end = start + timedelta(days=30)
     license_data = dict(
-        customer_name="Soolutions E-commerce B.V.",
-        customer_vat_id="NL853790267B01",
-        valid_from="2026-01-01",
-        valid_until="2026-02-28",
+        customer_name=customer_name,
+        customer_vat_id=customer_vat_id,
+        valid_from=start.isoformat(),
+        valid_until=end.isoformat(),
     )
 
     license_bytes = json.dumps(
@@ -55,20 +58,20 @@ def sign(use_key: str):
         "signature": base64.b64encode(signature).decode(),
     }
 
-    license_file = f"license-{use_key}.json"
+    license_file = f"{use_key}-license.json"
     with open(license_file, "wt") as f:
         buffer = json.dumps(signed_license, separators=(",", ":"), indent=4)
         f.write(buffer)
         print(f"Wrote {len(buffer)} bytes to {license_file}")
 
 
-def verify(key_name: str, license_file: str):
-    private_file = Path(key_name)
+def verify(use_key: str, license_file: str):
+    private_file = Path(f"{use_key}.pem")
     public_file = private_file.with_suffix(".pub")
     with open(public_file, "rb") as f:
         buffer = f.read()
-        public_key = serialization.load_ssh_public_key(buffer)
-        print(f"Using {key_name} private key")
+        public_key = serialization.load_pem_public_key(buffer)
+        print(f"Using {use_key} public key")
 
     with open(license_file, "rt") as f:
         buffer = f.read()
@@ -98,19 +101,26 @@ if __name__ == "__main__":
         description="Easy license management",
         epilog="Keep those fuckers paying.",
     )
-    parser.add_argument("-k", "--key", help="Select private key")
-    group = parser.add_mutually_exclusive_group()
+    parser.add_argument("-k", "--key", required=True, help="Select private key")
+    group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "-g", "--gen", action="store_true", help="Generate private/public key pair."
+        "-g",
+        "--generate",
+        action="store_true",
+        help="Generate private/public key pair.",
     )
     group.add_argument("-s", "--sign", action="store_true", help="Sign license file.")
     group.add_argument("-v", "--verify", help="Verify license.")
     args = parser.parse_args()
 
-    if args.gen:
+    if args.generate:
         generate(args.key)
     elif args.sign:
-        sign(args.key)
+        sign(
+            args.key,
+            customer_name="Soolutions E-commerce B.V.",
+            customer_vat_id="NL853790267B01",
+        )
     elif args.verify:
         verify(args.key, args.verify)
     else:
