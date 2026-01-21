@@ -27,10 +27,14 @@ If any field in the license changes, signature verification will fail.
 
 ## Intended Usage
 
-* **Issuer machine**: holds the private key and signs licenses
-* **Customer environment**: holds only the public key and verifies licenses
+- [ ] Client collects machine identification and registers / signs up to server
+- [ ] Client has a license file and verifies signature using the public key (offline)
+- [ ] Client without a valid license requests one from the server
+- [ ] Step 4: PROFIT !?!?
 
-The private key must never be shipped with the service.
+- [ ] on register server creates public / private key pairs for client
+- [ ] on license request verifies payments and generates a valid license
+
 
 ---
 
