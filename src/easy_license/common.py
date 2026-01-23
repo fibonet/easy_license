@@ -14,20 +14,19 @@ def slugify(text: str) -> str:
 
 @dataclass
 class License:
-    signature: bytes
-    valid_from: date
-    valid_until: date
     application: str
     vat_id: str
+    valid_from: date
+    valid_until: date
+    signature: bytes
 
     def serialise(self):
         buffer = b"".join(
             (
-                self.signature,
-                self.valid_from.isoformat().encode(),
-                self.valid_until.isoformat().encode(),
                 self.application.encode(),
                 self.vat_id.encode(),
+                self.valid_from.isoformat().encode(),
+                self.valid_until.isoformat().encode(),
             )
         )
         return buffer

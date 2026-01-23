@@ -25,31 +25,29 @@ def test_slugify(given, expected):
 
 
 @pytest.mark.parametrize(
-    "signature,valid_from,valid_until,application,vat_id,expected_bytes",
+    "application,vat_id,valid_from,valid_until,expected_bytes",
     [
         (
-            b"\x01\x02",
-            date(2024, 1, 1),
-            date(2024, 12, 31),
             "my_app",
             "VAT123",
-            b"\x01\x022024-01-012024-12-31my_appVAT123",
+            date(2024, 1, 1),
+            date(2024, 12, 31),
+            b"my_appVAT1232024-01-012024-12-31",
         ),
         (
-            b"sig",
-            date(2023, 6, 15),
-            date(2025, 6, 15),
             "billing",
             "EU987654",
-            b"sig2023-06-152025-06-15billingEU987654",
+            date(2023, 6, 15),
+            date(2025, 6, 15),
+            b"billingEU9876542023-06-152025-06-15",
         ),
     ],
 )
 def test_license_serialise(
-    signature, valid_from, valid_until, application, vat_id, expected_bytes
+    valid_from, valid_until, application, vat_id, expected_bytes
 ):
     lic = License(
-        signature=signature,
+        signature=b"",
         valid_from=valid_from,
         valid_until=valid_until,
         application=application,
