@@ -1,5 +1,5 @@
 [project]
-name = "easy-license"
+name = "easy_license"
 version = "0.1.0"
 description = "Add your description here"
 readme = "readme.md"
@@ -10,8 +10,12 @@ requires-python = ">=3.10"
 dependencies = []
 
 [project.scripts]
-easy-license = "easy_license:main"
+easy_license = "easy_license:main"
 
 [build-system]
 requires = ["uv_build>=0.9.26,<0.10.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+

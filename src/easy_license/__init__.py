@@ -1,7 +1,4 @@
-from .common import slugify
-from .client import register
+from .client import load_application_key
+from .common import License, slugify
 
-__all__ = [
-    "register",
-    "slugify",
-]
+__all__ = ["load_application_key", "slugify", "License"]

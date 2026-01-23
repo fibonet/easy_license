@@ -32,9 +32,21 @@ If any field in the license changes, signature verification will fail.
 - [ ] Client without a valid license requests one from the server
 - [ ] Step 4: PROFIT !?!?
 
-- [ ] on register server creates public / private key pairs for client
-- [ ] on license request verifies payments and generates a valid license
+## Actual client flow
 
+_Starting from happy flow_
+
+### Client
+
+- [ ] verifies license validity (offline)
+  - [ ] loads cached license (from local file?)
+  - [ ] without local file makes a remote call
+
+
+### Server
+
+- [ ] on license request verifies payments and generates a valid license
+- [ ] on register server creates public / private key pairs for client
 
 ---
 
