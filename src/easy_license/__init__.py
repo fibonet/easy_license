@@ -1,3 +1,7 @@
-from .lictool import generate
+from .common import slugify
+from .client import register
 
-__all__ = [generate]
+__all__ = [
+    "register",
+    "slugify",
+]
