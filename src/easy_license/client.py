@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
-from .common import License, slugify
+from .license import License
 
 
 def fetch_application_key(application: str, customer: str) -> bytes:
