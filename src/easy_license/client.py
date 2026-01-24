@@ -1,7 +1,6 @@
 import json
 from base64 import b64decode, b64encode
 from datetime import date, timedelta
-from inspect import signature
 from pathlib import Path
 from uuid import getnode
 
@@ -71,13 +70,4 @@ def verify(application: str, vat_id: str):
     key = f"{slugify(application)}_{slugify(vat_id)}"
     public_key = load_application_key(key)
     a_license = load_license(key)
-    public_key.verify(a_license.signature, license_bytes)
-
-    today = date.today()
-    start = date.fromisoformat(payload["data"]["valid_from"])
-    end = date.fromisoformat(payload["data"]["valid_until"])
-
-    if today < start or today > end:
-        raise ValueError("License expired or not yet valid")
-
-    print(f"{license_file} is valid for {today}")
+    a_license.verify(public_key)

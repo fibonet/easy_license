@@ -43,7 +43,7 @@ def test_slugify(given, expected):
         ),
     ],
 )
-def test_license_serialise(
+def test_license_bytes(
     valid_from, valid_until, application, vat_id, expected_bytes
 ):
     lic = License(
@@ -51,10 +51,10 @@ def test_license_serialise(
         valid_from=valid_from,
         valid_until=valid_until,
         application=application,
-        vat_id=vat_id,
+        customer=vat_id,
     )
 
-    actual = lic.serialise()
+    actual = lic.data()
 
     assert isinstance(actual, bytes)
     assert actual == expected_bytes
