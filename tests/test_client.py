@@ -1,3 +1,3 @@
 import pytest
 
-from easy_license import load_application_key
+from easy_license import load_or_fetch_application_key

@@ -1,7 +1,7 @@
 import re
 import unicodedata
 
-from .client import load_application_key
+from .client import load_or_fetch_application_key
 from .license import InvalidSignature, License
 
 
@@ -16,6 +16,6 @@ def slugify(text: str) -> str:
 __all__ = [
     "InvalidSignature",
     "License",
-    "load_application_key",
+    "load_or_fetch_application_key",
     "slugify",
 ]

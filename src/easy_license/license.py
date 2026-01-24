@@ -36,6 +36,10 @@ class License:
         return cls(**data)
 
     def to_file(self, filepath: Path):
+        with open(filepath, "wt") as f:
+            json.dump(self.json_data(), f, separators=(",", ":"), sort_keys=True)
+
+    def json_data(self) -> dict:
         data = asdict(self)
 
         if self.signature:
@@ -45,8 +49,7 @@ class License:
         if isinstance(self.valid_until, date):
             data["valid_until"] = self.valid_until.isoformat()
 
-        with open(filepath, "wt") as f:
-            json.dump(data, f, indent=4)
+        return data
 
     def data(self) -> bytes:
         buffer = b"".join(
