@@ -6,7 +6,10 @@ from datetime import date
 from typing import ClassVar
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
 
 
 def slugify(text: str) -> str:
@@ -45,3 +48,7 @@ class License:
         today = date.today()
         if today < self.valid_from or today > self.valid_until:
             raise InvalidSignature("License is expired")
+
+    def sign(self, private_key: Ed25519PrivateKey) -> None:
+        """Signs (mutates) the current license"""
+        self.signature = private_key.sign(self.data())

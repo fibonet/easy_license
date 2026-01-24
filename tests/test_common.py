@@ -9,30 +9,6 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 from easy_license import InvalidSignature, License, slugify
 
 
-def make_signed_license(
-    *,
-    application="unittest",
-    customer="developers",
-    valid_from,
-    valid_until,
-    private_key,
-):
-    unsigned = License(
-        application=application,
-        customer=customer,
-        valid_from=valid_from,
-        valid_until=valid_until,
-    )
-    signature = private_key.sign(unsigned.data())
-    return License(
-        application=application,
-        customer=customer,
-        valid_from=valid_from,
-        valid_until=valid_until,
-        signature=signature,
-    )
-
-
 def corrupted(buffer: bytes) -> bytes:
     """Simulate data corruption"""
     assert buffer, "Cannot corrupt empty buffer"
@@ -66,6 +42,21 @@ def test_slugify(given, expected):
     assert slugify(given) == expected
 
 
+def test_sign_creates_valid_signature(private_key):
+    license = License(
+        application="app",
+        customer="customer",
+        valid_from=date.today(),
+        valid_until=date.today(),
+    )
+    assert license.signature == b""
+
+    license.sign(private_key)
+
+    assert license.signature
+    license.verify(private_key.public_key())
+
+
 @pytest.mark.parametrize(
     "from_offset,until_offset",
     [
@@ -76,11 +67,13 @@ def test_slugify(given, expected):
 )
 def test_verify_signed_license_does_not_raise(private_key, from_offset, until_offset):
     today = date.today()
-    license = make_signed_license(
+    license = License(
+        application="unittest",
+        customer="developers",
         valid_from=today + timedelta(days=from_offset),
         valid_until=today + timedelta(days=until_offset),
-        private_key=private_key,
     )
+    license.sign(private_key)
 
     license.verify(private_key.public_key())
 
@@ -94,11 +87,13 @@ def test_verify_signed_license_does_not_raise(private_key, from_offset, until_of
 )
 def test_verify_expired_license_raises(private_key, from_offset, until_offset):
     today = date.today()
-    license = make_signed_license(
+    license = License(
+        application="unittest",
+        customer="developers",
         valid_from=today + timedelta(days=from_offset),
         valid_until=today + timedelta(days=until_offset),
-        private_key=private_key,
     )
+    license.sign(private_key)
 
     with pytest.raises(InvalidSignature):
         license.verify(private_key.public_key())
@@ -114,11 +109,15 @@ def test_verify_expired_license_raises(private_key, from_offset, until_offset):
 )
 def test_verify_tampered_license_raises(private_key, from_offset, until_offset):
     today = date.today()
-    license = make_signed_license(
+    license = License(
+        application="unittest",
+        customer="developers",
         valid_from=today + timedelta(days=from_offset),
         valid_until=today + timedelta(days=until_offset),
-        private_key=private_key,
     )
+    license.sign(private_key)
+    license.verify(private_key.public_key())
+
     license.signature = corrupted(license.signature)
 
     with pytest.raises(InvalidSignature):
