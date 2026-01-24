@@ -1,8 +1,11 @@
 import re
 import unicodedata
+from base64 import encode
 from dataclasses import dataclass
 from datetime import date
+from typing import ClassVar
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
@@ -16,15 +19,17 @@ def slugify(text: str) -> str:
 
 @dataclass
 class License:
+    VERSION_TAG: ClassVar[str] = "v1"
     application: str
     customer: str
     valid_from: date
     valid_until: date
-    signature: bytes
+    signature: bytes = b""
 
     def data(self) -> bytes:
         buffer = b"".join(
             (
+                self.VERSION_TAG.encode(),
                 self.application.encode(),
                 self.customer.encode(),
                 self.valid_from.isoformat().encode(),
@@ -34,7 +39,9 @@ class License:
         return buffer
 
     def verify(self, public_key: Ed25519PublicKey):
+        """Raises InvalidSignature if anything fails"""
         public_key.verify(self.signature, self.data())
+
         today = date.today()
         if today < self.valid_from or today > self.valid_until:
-            raise ValueError("License is expired")
+            raise InvalidSignature("License is expired")

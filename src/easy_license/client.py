@@ -13,10 +13,12 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 from .common import License, slugify
 
 
-def fetch_application_key(a_key: str) -> bytes:
+def fetch_application_key(application: str, customer: str) -> bytes:
+    """Fake implementation, this should make a server call"""
     machine_id = getnode().to_bytes(length=8, byteorder="big")
     payload = dict(
-        key=a_key,
+        application=application,
+        customer=customer,
         machine_id=b64encode(machine_id).decode("ascii"),
     )
     private_key = Ed25519PrivateKey.generate()
@@ -25,49 +27,50 @@ def fetch_application_key(a_key: str) -> bytes:
     return public_bytes
 
 
-def fetch_license(a_key: str) -> dict:
+def fetch_license(application: str, customer: str) -> dict:
+    """Fake implementation, this should make a server call"""
     first = date.today()
     last = first + timedelta(days=30)
     return dict(
         signature=b"",
+        application=application,
+        customer=customer,
         valid_from=first,
         valid_until=last,
-        meta=dict(key=a_key),
     )
 
 
-def load_application_key(a_key: str):
-    public_file = Path(f"{a_key}.pub")
+def load_application_key(application: str, customer: str):
+    public_file = Path(f"{application}-{customer}.pub")
 
     if public_file.exists():
         with open(public_file, "rb") as f:
             public_bytes = f.read()
 
     else:
-        public_bytes = fetch_application_key(a_key)
+        public_bytes = fetch_application_key(application, customer)
         with open(public_file, "xb") as file:
             file.write(public_bytes)
 
     return Ed25519PublicKey.from_public_bytes(public_bytes)
 
 
-def load_license(a_key: str) -> License:
-    license_file = Path(f"{a_key}-license.json")
+def load_license(application: str, customer: str) -> License:
+    license_file = Path(f"{application}-{customer}-license.json")
 
     if license_file.exists():
         with open(license_file, "rb") as f:
             license_data = json.load(f)
 
     else:
-        license_data = fetch_license(a_key)
+        license_data = fetch_license(application, customer)
         with open(license_file, "xb") as f:
             json.dump(license_data, f, separators=(",", ":"), sort_keys=True)
 
     return License(**license_data)
 
 
-def verify(application: str, vat_id: str):
-    key = f"{slugify(application)}_{slugify(vat_id)}"
-    public_key = load_application_key(key)
-    a_license = load_license(key)
+def verify(application: str, customer: str):
+    public_key = load_application_key(application, customer)
+    a_license = load_license(application, customer)
     a_license.verify(public_key)
