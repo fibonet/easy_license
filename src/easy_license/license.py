@@ -14,12 +14,13 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 
 @dataclass
 class License:
-    VERSION_TAG: ClassVar[str] = "v1"
     application: str
     customer: str
     valid_from: date
     valid_until: date
     signature: bytes = b""
+
+    VERSION_TAG: ClassVar[str] = "v1"
 
     @classmethod
     def from_file(cls, filepath: Path):
