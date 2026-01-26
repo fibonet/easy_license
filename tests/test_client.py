@@ -1,5 +1,6 @@
-import json
+import os
 import random
+import tempfile
 from datetime import date, timedelta
 from unittest.mock import patch
 
@@ -32,6 +33,7 @@ def signed_license(private_key) -> License:
 
 @pytest.fixture
 def a_client(private_key, signed_license):
+    """Actually a mocked client"""
     server_url = "http://fake-server.local"
     buffer = private_key.public_key().public_bytes_raw()
     with (
@@ -51,5 +53,14 @@ def test_can_create_valid_instance(a_client):
     assert a_client
 
 
-def test_verify_valid_instance_does_not_raise(a_client):
-    a_client.verify()
+def test_multiple_verify_calls_trigger_only_one_fetch_call(a_client, signed_license):
+    with tempfile.TemporaryDirectory() as temp:
+        os.chdir(temp)
+        with patch(
+            "easy_license.client.fetch_license", return_value=signed_license.json_data()
+        ) as mocked_fetch:
+            a_client.verify()
+            a_client.verify()
+            a_client.verify()
+
+            assert mocked_fetch.call_count == 1

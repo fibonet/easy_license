@@ -1,4 +1,5 @@
 import json
+import os
 from base64 import b64decode, b64encode
 from pathlib import Path
 from uuid import getnode
@@ -86,7 +87,6 @@ class LazyCachedClient:
             )
             public_file.write_bytes(public_key_bytes)
 
-        print(public_key_bytes)
         return Ed25519PublicKey.from_public_bytes(public_key_bytes)
 
     def load_or_fetch_license(self) -> License:
