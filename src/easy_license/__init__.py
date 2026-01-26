@@ -1,7 +1,7 @@
 import re
 import unicodedata
 
-from .client import verify
+from .client import LazyCachedClient
 from .license import InvalidSignature, License
 
 
@@ -13,9 +13,4 @@ def slugify(text: str) -> str:
     return text.strip("-")
 
 
-__all__ = [
-    "InvalidSignature",
-    "License",
-    "slugify",
-    "verify",
-]
+__all__ = ["InvalidSignature", "LazyCachedClient", "License", "slugify"]
