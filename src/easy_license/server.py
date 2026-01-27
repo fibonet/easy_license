@@ -1,6 +1,7 @@
 import base64
 import json
 from datetime import date
+from uuid import UUID
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -44,3 +45,31 @@ def sign(pk: Ed25519PrivateKey, payload: dict, start: date, end: date):
         data=payload,
         signature=base64.b64encode(raw_signature).decode("utf-8"),
     )
+
+
+class LicenseStore:
+    """what"""
+
+    def __init__(self):
+        self.store = dict()
+        pass
+
+    def get_or_raise(self, model: str, key: UUID):
+        item = self.store[model].get(key)
+
+        if item is None:
+            raise KeyError(f"There is no app with {key}.")
+
+        return item
+
+    def get_application_key(self, payload: dict):
+        """
+        expected payload: dict(application=, customer=, machine=)
+        let's embrace a new strategy:
+         - application is an application identifier (uuid)
+         - customer is a customer identifier (vat id)
+         - machine is a machine identifier (mac)
+        """
+        private_key = self.get_or_raise("application_key", payload["application"])
+        # TODO: create access log entry: (application, customer, machine, ip)
+        return private_key

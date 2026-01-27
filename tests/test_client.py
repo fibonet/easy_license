@@ -1,6 +1,8 @@
+import json
 import os
 import random
 import tempfile
+from base64 import b64encode
 from datetime import date, timedelta
 from unittest.mock import patch
 
@@ -35,9 +37,9 @@ def signed_license(private_key) -> License:
 def a_client(private_key, signed_license):
     """Actually a mocked client"""
     server_url = "http://fake-server.local"
-    buffer = private_key.public_key().public_bytes_raw()
+    public_bytes = private_key.public_key().public_bytes_raw()
     with (
-        patch("easy_license.client.fetch_application_key", return_value=buffer),
+        patch("easy_license.client.fetch_application_key", return_value=public_bytes),
         patch(
             "easy_license.client.fetch_license", return_value=signed_license.json_data()
         ),

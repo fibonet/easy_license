@@ -17,7 +17,7 @@ def fetch_application_key(api_root: str, application: str, customer: str) -> byt
     payload = dict(
         application=application,
         customer=customer,
-        machine_id=b64encode(MACHINE_ID).decode("ascii"),
+        machine=b64encode(MACHINE_ID).decode("ascii"),
     )
     api_url = f"{api_root}/application_key"
 

@@ -3,6 +3,7 @@ import unicodedata
 
 from .client import LazyCachedClient
 from .license import InvalidSignature, License
+from .server import LicenseStore
 
 
 def slugify(text: str) -> str:
@@ -13,4 +14,4 @@ def slugify(text: str) -> str:
     return text.strip("-")
 
 
-__all__ = ["InvalidSignature", "LazyCachedClient", "License", "slugify"]
+__all__ = ["InvalidSignature", "LazyCachedClient", "License", "LicenseStore", "slugify"]
