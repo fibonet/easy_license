@@ -5,13 +5,14 @@ from uuid import UUID
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from license import License
 from pydantic import BaseModel
 
-app = FastAPI(title="Easy License Server")
+app = FastAPI(title="Easy Licensing Server")
 
 application_keys: Dict[Tuple[UUID, UUID], Ed25519PrivateKey] = {}
+customer_payments: Dict[UUID, bool] = {}
 
 
 class ApplicationKeyRequest(BaseModel):
@@ -27,14 +28,16 @@ class LicenseRequest(BaseModel):
 
 
 def get_private_key(application: UUID, customer: UUID) -> Ed25519PrivateKey:
-    """Get or create private key for application-customer pair."""
     key = (application, customer)
     return application_keys.setdefault(key, Ed25519PrivateKey.generate())
 
 
+def has_pending_payment(customer: UUID) -> bool:
+    return customer_payments.get(customer, False)
+
+
 @app.post("/application_key")
 def application_key(request: ApplicationKeyRequest) -> dict:
-    """Return public key for application-customer pair."""
     private_key = get_private_key(request.application, request.customer)
     public_key = private_key.public_key()
 
@@ -47,18 +50,18 @@ def application_key(request: ApplicationKeyRequest) -> dict:
 
 @app.post("/license")
 def license(request: LicenseRequest) -> dict:
-    """Return signed license for application-customer pair."""
+    if has_pending_payment(request.customer):
+        raise HTTPException(status_code=402, detail="Payment required")
+
     private_key = get_private_key(request.application, request.customer)
 
     today = date.today()
-
     license_obj = License(
         application=str(request.application),
         customer=str(request.customer),
         valid_from=today,
         valid_until=today + timedelta(days=365),
     )
-
     license_obj.sign(private_key)
 
     return license_obj.json_data()
