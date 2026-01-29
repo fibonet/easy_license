@@ -1,75 +1,64 @@
-import base64
-import json
-from datetime import date
+from base64 import b64encode
+from datetime import date, timedelta
+from typing import Dict, Tuple
 from uuid import UUID
 
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from fastapi import FastAPI
+from license import License
+from pydantic import BaseModel
+
+app = FastAPI(title="Easy License Server")
+
+application_keys: Dict[Tuple[UUID, UUID], Ed25519PrivateKey] = {}
 
 
-def sign(pk: Ed25519PrivateKey, payload: dict, start: date, end: date):
-    """
-    Create a signed license payload using an Ed25519 private key. The function
-    enriches the provided payload with a validity interval, serializes it into
-    canonical JSON, and signs it using the given private key. The signature is
-    returned as a base64-encoded string.
-    Parameters
-    ----------
-    pk : Ed25519PrivateKey
-        The Ed25519 private key used to sign the payload.
-    payload : dict
-        The base license payload (e.g., app_id, machine_id, features).
-    start : date
-        The start date of the license validity interval.
-    end : date
-        The end date of the license validity interval.
+class ApplicationKeyRequest(BaseModel):
+    application: UUID
+    customer: UUID
+    machine: str
 
-    Returns
-    -------
-    dict
-        A dictionary containing:
-        - "data": the full enriched payload including validity fields
-        - "signature": the base64-encoded Ed25519 signature
-    """
 
-    valid_payload = {
-        **payload,
-        "valid_from": start.isoformat(),
-        "valid_until": end.isoformat(),
-    }
+class LicenseRequest(BaseModel):
+    application: UUID
+    customer: UUID
+    machine_id: str
 
-    text_to_sign = json.dumps(valid_payload, separators=(",", ":"), sort_keys=True)
-    bytes_to_sign = text_to_sign.encode("utf-8")
-    raw_signature = pk.sign(bytes_to_sign)
 
-    return dict(
-        data=payload,
-        signature=base64.b64encode(raw_signature).decode("utf-8"),
+def get_private_key(application: UUID, customer: UUID) -> Ed25519PrivateKey:
+    """Get or create private key for application-customer pair."""
+    key = (application, customer)
+    return application_keys.setdefault(key, Ed25519PrivateKey.generate())
+
+
+@app.post("/application_key")
+def application_key(request: ApplicationKeyRequest) -> dict:
+    """Return public key for application-customer pair."""
+    private_key = get_private_key(request.application, request.customer)
+    public_key = private_key.public_key()
+
+    public_key_bytes = public_key.public_bytes(
+        encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
     )
 
+    return {"public_key": b64encode(public_key_bytes).decode()}
 
-class LicenseStore:
-    """what"""
 
-    def __init__(self):
-        self.store = dict()
-        pass
+@app.post("/license")
+def license(request: LicenseRequest) -> dict:
+    """Return signed license for application-customer pair."""
+    private_key = get_private_key(request.application, request.customer)
 
-    def get_or_raise(self, model: str, key: UUID):
-        item = self.store[model].get(key)
+    today = date.today()
 
-        if item is None:
-            raise KeyError(f"There is no app with {key}.")
+    license_obj = License(
+        application=str(request.application),
+        customer=str(request.customer),
+        valid_from=today,
+        valid_until=today + timedelta(days=365),
+    )
 
-        return item
+    license_obj.sign(private_key)
 
-    def get_application_key(self, payload: dict):
-        """
-        expected payload: dict(application=, customer=, machine=)
-        let's embrace a new strategy:
-         - application is an application identifier (uuid)
-         - customer is a customer identifier (vat id)
-         - machine is a machine identifier (mac)
-        """
-        private_key = self.get_or_raise("application_key", payload["application"])
-        # TODO: create access log entry: (application, customer, machine, ip)
-        return private_key
+    return license_obj.json_data()
