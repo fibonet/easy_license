@@ -60,7 +60,7 @@ def license(request: LicenseRequest) -> dict:
         application=str(request.application),
         customer=str(request.customer),
         valid_from=today,
-        valid_until=today + timedelta(days=365),
+        valid_until=today + timedelta(days=30),
     )
     license_obj.sign(private_key)
 
