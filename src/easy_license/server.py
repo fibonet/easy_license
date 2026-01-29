@@ -1,18 +1,20 @@
 from base64 import b64encode
-from datetime import date, timedelta
-from typing import Dict, Tuple
+from datetime import date, datetime, timedelta
+from typing import Dict, List, Tuple
 from uuid import UUID
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from fastapi import FastAPI, HTTPException
-from license import License
 from pydantic import BaseModel
+
+from .license import License
 
 app = FastAPI(title="Easy Licensing Server")
 
 application_keys: Dict[Tuple[UUID, UUID], Ed25519PrivateKey] = {}
 customer_payments: Dict[UUID, bool] = {}
+access_log: List[dict] = []
 
 
 class ApplicationKeyRequest(BaseModel):
@@ -36,8 +38,24 @@ def has_pending_payment(customer: UUID) -> bool:
     return customer_payments.get(customer, False)
 
 
+def log_access(endpoint: str, application: UUID, customer: UUID, machine: str):
+    access_log.append(
+        {
+            "timestamp": datetime.now().isoformat(),
+            "endpoint": endpoint,
+            "application": str(application),
+            "customer": str(customer),
+            "machine": machine,
+        }
+    )
+
+
 @app.post("/application_key")
 def application_key(request: ApplicationKeyRequest) -> dict:
+    log_access(
+        "application_key", request.application, request.customer, request.machine
+    )
+
     private_key = get_private_key(request.application, request.customer)
     public_key = private_key.public_key()
 
@@ -50,6 +68,8 @@ def application_key(request: ApplicationKeyRequest) -> dict:
 
 @app.post("/license")
 def license(request: LicenseRequest) -> dict:
+    log_access("license", request.application, request.customer, request.machine_id)
+
     if has_pending_payment(request.customer):
         raise HTTPException(status_code=402, detail="Payment required")
 
@@ -65,3 +85,8 @@ def license(request: LicenseRequest) -> dict:
     license_obj.sign(private_key)
 
     return license_obj.json_data()
+
+
+@app.get("/journal")
+def get_access_log() -> List[dict]:
+    return access_log
