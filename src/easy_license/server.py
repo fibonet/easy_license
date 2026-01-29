@@ -8,25 +8,31 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from .license import License
+from easy_license import License
 
-app = FastAPI(title="Easy Licensing Server")
+app = FastAPI(title="License Server")
 
 application_keys: Dict[Tuple[UUID, UUID], Ed25519PrivateKey] = {}
 customer_payments: Dict[UUID, bool] = {}
 access_log: List[dict] = []
 
 
-class ApplicationKeyRequest(BaseModel):
+class ApplicationMeta(BaseModel):
     application: UUID
     customer: UUID
     machine: str
 
 
-class LicenseRequest(BaseModel):
-    application: UUID
-    customer: UUID
-    machine_id: str
+def log_access(api: str, body: ApplicationMeta):
+    access_log.append(
+        {
+            "timestamp": datetime.now().isoformat(),
+            "path": api,
+            "application": str(body.application),
+            "customer": str(body.customer),
+            "machine": body.machine,
+        }
+    )
 
 
 def get_private_key(application: UUID, customer: UUID) -> Ed25519PrivateKey:
@@ -38,23 +44,9 @@ def has_pending_payment(customer: UUID) -> bool:
     return customer_payments.get(customer, False)
 
 
-def log_access(endpoint: str, application: UUID, customer: UUID, machine: str):
-    access_log.append(
-        {
-            "timestamp": datetime.now().isoformat(),
-            "endpoint": endpoint,
-            "application": str(application),
-            "customer": str(customer),
-            "machine": machine,
-        }
-    )
-
-
 @app.post("/application_key")
-def application_key(request: ApplicationKeyRequest) -> dict:
-    log_access(
-        "application_key", request.application, request.customer, request.machine
-    )
+def application_key(request: ApplicationMeta) -> dict:
+    log_access("application_key", request)
 
     private_key = get_private_key(request.application, request.customer)
     public_key = private_key.public_key()
@@ -67,8 +59,8 @@ def application_key(request: ApplicationKeyRequest) -> dict:
 
 
 @app.post("/license")
-def license(request: LicenseRequest) -> dict:
-    log_access("license", request.application, request.customer, request.machine_id)
+def license(request: ApplicationMeta) -> dict:
+    log_access("license", request)
 
     if has_pending_payment(request.customer):
         raise HTTPException(status_code=402, detail="Payment required")
@@ -76,17 +68,19 @@ def license(request: LicenseRequest) -> dict:
     private_key = get_private_key(request.application, request.customer)
 
     today = date.today()
+
     license_obj = License(
         application=str(request.application),
         customer=str(request.customer),
         valid_from=today,
         valid_until=today + timedelta(days=30),
     )
+
     license_obj.sign(private_key)
 
     return license_obj.json_data()
 
 
 @app.get("/journal")
-def get_access_log() -> List[dict]:
+def journal() -> List[dict]:
     return access_log
