@@ -3,7 +3,6 @@ import unicodedata
 
 from .client import LazyCachedClient
 from .license import InvalidSignature, License
-from .server import LicenseStore
 
 
 def slugify(text: str) -> str:

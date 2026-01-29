@@ -1,5 +1,6 @@
 *.pub
 *.pem
 *-license.json
+*.lock
 
 __pycache__
